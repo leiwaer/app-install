@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>正在为你跳转到应用商店…</title>
+  <style>
+    :root { --fg:#111; --muted:#666; --bg:#fff; --btn:#0d6efd; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fg:#eee; --muted:#aaa; --bg:#0b0b0b; --btn:#4da3ff; }
+    }
+    html,body{height:100%;margin:0}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--fg);display:flex;align-items:center;justify-content:center}
+    .card{max-width:560px;width:92%;padding:24px 20px;border-radius:16px;border:1px solid #0001;box-shadow:0 10px 30px #0002}
+    h1{font-size:20px;margin:0 0 6px}
+    p{margin:6px 0;color:var(--muted)}
+    .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+    .btn{flex:1 1 220px;display:inline-block;padding:12px 14px;text-align:center;border-radius:12px;text-decoration:none;color:#fff;background:var(--btn)}
+    .hint{margin-top:16px;font-size:12px;color:var(--muted)}
+    .qr{margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .qr img{width:120px;height:120px;border-radius:8px;border:1px solid #0002}
+    code{background:#0001;padding:2px 6px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>正在为你跳转到应用商店…</h1>
+    <p id="status">若未自动跳转，请手动点击下方按钮。</p>
+    <div class="btns">
+      <a id="iosLink" class="btn" href="#" rel="nofollow">前往 App Store（iOS）</a>
+      <a id="androidLink" class="btn" href="#" rel="nofollow">前往 Google Play（Android）</a>
+    </div>
+    <p class="hint">
+      提示：如 Android 设备无法使用 Google Play，可尝试备用下载。
+    </p>
+    <div class="btns" id="extraBtns" style="display:none">
+      <a id="androidApk" class="btn" href="#" rel="nofollow" style="background:#16a34a">备用 APK 下载</a>
+      <a id="huaweiLink" class="btn" href="#" rel="nofollow" style="background:#ef4444">华为 AppGallery</a>
+    </div>
+    <div class="qr" id="qrWrap" style="display:none">
+      <img id="qr" alt="下载二维码" />
+      <div>
+        <div style="font-weight:600">电脑上打开了这个页面？</div>
+        <div>用手机扫描二维码，直接跳转到商店。</div>
+      </div>
+    </div>
+    <p class="hint">若仍无法跳转，请手动复制打开：<code id="rawUrl"></code></p>
+  </main>
+
+  <script>
+    // === 必改：你的链接 ===
+    const IOS_APP_STORE = "http://apple.co/2h4IJpO";
+    const ANDROID_GOOGLE_PLAY = "https://play.google.com/store/apps/details?id=com.sunvy.poker.fans";
+    const ANDROID_APK_FALLBACK = ""; // 例如 https://cdn.example.com/app/latest.apk
+    const HUAWEI_APPGALLERY = "";    // 例如 https://appgallery.huawei.com/app/C123456
+
+    // 透传 utm_* / ref / campaign 等常见参数
+    function appendQuery(url, extra) {
+      if (!url) return "";
+      try {
+        const u = new URL(url);
+        if (extra) for (const [k, v] of extra.entries()) {
+          if (/^(utm_|ref$|campaign$)/i.test(k)) u.searchParams.set(k, v);
+        }
+        return u.toString();
+      } catch { return url; }
+    }
+    const incomingParams = new URLSearchParams(location.search);
+
+    // 设备识别
+    const ua = navigator.userAgent || "";
+    const uaData = navigator.userAgentData;
+    const isAndroid = /Android/i.test(ua) || (uaData?.platform || "").toLowerCase().includes("android");
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isMobile = isAndroid || isIOS;
+    const isWeChat = /MicroMessenger/i.test(ua);
+    const isDesktop = !isMobile;
+
+    // 链接
+    const iosHref = appendQuery(IOS_APP_STORE, incomingParams);
+    const gpHref = appendQuery(ANDROID_GOOGLE_PLAY, incomingParams);
+    const apkHref = appendQuery(ANDROID_APK_FALLBACK, incomingParams);
+    const huaweiHref = appendQuery(HUAWEI_APPGALLERY, incomingParams);
+
+    // 按钮赋值
+    const iosLink = document.getElementById("iosLink");
+    const androidLink = document.getElementById("androidLink");
+    const rawUrl = document.getElementById("rawUrl");
+    iosLink.href = iosHref || "#";
+    androidLink.href = gpHref || "#";
+    rawUrl.textContent = location.href;
+
+    // 额外按钮
+    const extra = document.getElementById("extraBtns");
+    if (apkHref || huaweiHref) {
+      extra.style.display = "flex";
+      const apk = document.getElementById("androidApk");
+      const hua = document.getElementById("huaweiLink");
+      if (apkHref) apk.href = apkHref; else apk.style.display = "none";
+      if (huaweiHref) hua.href = huaweiHref; else hua.style.display = "none";
+    }
+
+    // 桌面端展示简易“占位”QR（生产可换真 QR）
+    function renderInlineQR() {
+      const svg = `data:image/svg+xml;utf8,` + encodeURIComponent(
+        `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'>
+           <rect width='120' height='120' fill='#fff'/>
+           <rect x='8' y='8' width='104' height='104' fill='#000'/>
+           <rect x='16' y='16' width='88' height='88' fill='#fff'/>
+           <rect x='16' y='16' width='20' height='20' fill='#000'/>
+           <rect x='84' y='16' width='20' height='20' fill='#000'/>
+           <rect x='16' y='84' width='20' height='20' fill='#000'/>
+           <rect x='48' y='48' width='8' height='8' fill='#000'/>
+           <rect x='64' y='56' width='8' height='8' fill='#000'/>
+           <rect x='72' y='72' width='8' height='8' fill='#000'/>
+           <rect x='56' y='72' width='8' height='8' fill='#000'/>
+         </svg>`
+      );
+      document.getElementById("qr").src = svg;
+      document.getElementById("qrWrap").style.display = "flex";
+    }
+    if (isDesktop) renderInlineQR();
+
+    // 自动跳转
+    const status = document.getElementById("status");
+    const go = (url) => url && location.replace(url);
+
+    if (isWeChat) {
+      status.textContent = "检测到微信内置浏览器，请点击下方按钮或用系统浏览器打开。";
+    } else if (isIOS && iosHref) {
+      status.textContent = "已检测到 iOS 设备，正在跳转到 App Store…";
+      setTimeout(() => go(iosHref), 200);
+    } else if (isAndroid && gpHref) {
+      status.textContent = "已检测到 Android 设备，正在跳转到 Google Play…";
+      setTimeout(() => go(gpHref), 200);
+    } else {
+      status.textContent = "请手动点击下方按钮或用手机访问本页。";
+    }
+
+    // 兜底提示
+    let jumped = false;
+    addEventListener("pagehide", () => jumped = true);
+    setTimeout(() => { if (!jumped) status.textContent = "如未自动跳转，请点击下方按钮。"; }, 2000);
+  </script>
+</body>
+</html>
