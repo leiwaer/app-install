@@ -72,8 +72,9 @@
       return "en";
     }
     const qs = new URLSearchParams(location.search);
-    let lang = normalizeLang(qs.get("lang")) ||
-               normalizeLang((navigator.languages && navigator.languages[0]) || navigator.language);
+    const forcedLang = qs.get("lang");
+    let lang = forcedLang ? normalizeLang(forcedLang)
+                          : normalizeLang((navigator.languages && navigator.languages[0]) || navigator.language);
     document.documentElement.lang = lang.startsWith("zh") ? (lang === "zh-Hant" ? "zh-Hant" : "zh-CN") : lang;
 
     const M = {
